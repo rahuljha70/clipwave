@@ -28,8 +28,9 @@ async function main() {
       await grabStill(absPath(String(project.media_path)), at, abs, 1280);
       await run(`UPDATE projects SET thumbnail_url = ? WHERE id = ?`, [`/api/media/${posterRel}`, project.id]);
       console.log(`- project ${project.id}: poster`);
-    } catch (err: any) {
-      console.log(`- project ${project.id}: poster failed (${err.message})`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(`- project ${project.id}: poster failed (${message})`);
     }
   }
 
@@ -73,7 +74,10 @@ async function main() {
       category: String(clip.category ?? "conversation"),
       width: 1080,
       height: 1920,
-    }).catch((err: any) => console.log(`  thumbnail failed: ${err.message}`));
+    }).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(`  thumbnail failed: ${message}`);
+    });
 
     await run(`UPDATE clips SET updated_at = updated_at WHERE id = ?`, [clip.id]);
     console.log(`- ${clip.id}: poster + portrait thumbnail`);

@@ -29,8 +29,8 @@ export default function LoginForm({ googleEnabled }: { googleEnabled: boolean })
       await apiPost("/api/auth/login", { email, password });
       router.push(next);
       router.refresh();
-    } catch (err: any) {
-      setError(err?.message ?? "Sign in failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : "Sign in failed.");
     } finally {
       setBusy(false);
     }
