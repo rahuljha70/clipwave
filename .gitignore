@@ -48,3 +48,5 @@ next-env.d.ts
 /data/
 /python/.venv/
 docs/screens/*.tmp
+/.agents/
+/.codex/
