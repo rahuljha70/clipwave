@@ -1,0 +1,103 @@
+CLIPWAVE — LOCAL INSTALL (start here)
+=====================================
+
+This folder is the complete app. It runs on your own machine at http://localhost:3000.
+
+WHAT'S INSIDE
+-------------
+clipwave/            the whole project (Next.js 15 + TypeScript + Tailwind)
+  README.md          full documentation: features, API, Supabase, env vars, troubleshooting
+  docs/screens/      screenshots of every screen
+  db/migrations/     SQL schema (portable: SQLite and Postgres)
+  python/            Whisper transcription + audio features + face tracking
+  scripts/           db-init, seed, dev-all, local-host, backfill, sqlite→postgres copy
+  data/storage/      media from the demo projects (sources, renders, thumbnails)
+
+
+1. INSTALL THE TOOLCHAIN  (one time)
+------------------------------------
+  Node.js 20+        https://nodejs.org
+  FFmpeg             Windows: winget install Gyan.FFmpeg
+                     macOS:   brew install ffmpeg
+                     Linux:   sudo apt install ffmpeg
+  Python 3.10+       (optional — only for local Whisper transcription)
+
+  Optional extras:
+    yt-dlp           downloaded automatically for YouTube/Kick imports (internet required once)
+    npm run setup:python  (Whisper + OpenCV; project-local venv)
+
+
+2. RUN IT  (one command)
+------------------------
+  cd clipwave
+  npm install
+  npm run host
+
+  Then open:  http://localhost:3000
+
+  `npm run host` checks the toolchain, applies database migrations, seeds the demo
+  accounts, builds, and starts BOTH the web app and the background worker.
+
+  Other ways to run:
+    npm run dev:all          hot-reload dev server + worker
+    npm run dev              web only  (worker in a second terminal: npm run worker)
+    PORT=4000 npm run host   different port
+    MODE=dev npm run host    dev mode with the same one-command setup
+
+
+3. SIGN IN
+----------
+  demo@clipwave.app    demo12345        Pro plan (most features unlocked)
+  admin@clipwave.app   clipwave-admin   Ultimate plan + /dashboard/admin
+
+  Passwords come from .env.local → change them, then `npm run db:reset && npm run seed`.
+
+
+4. ENVIRONMENT  (.env.local)
+----------------------------
+Already filled in for you:
+
+  DATABASE_URL   -> the Supabase Postgres project created for this build
+                    (transaction pooler, IPv4). Delete the line to fall back to a
+                    local SQLite file at data/clipwave.db — zero setup.
+
+  STT_PROVIDER=local, WHISPER_MODEL=tiny   -> fast CPU transcription.
+                    Use `small` or `medium` for better accuracy, `cuda` for GPU.
+
+  Session/admin secrets are placeholders — set your own before sharing this app.
+
+  Optional upgrades you may want:
+    OPENAI_API_KEY / LLM_API_KEY     smarter moment ranking + SEO variety
+    GOOGLE_CLIENT_ID + SECRET        "Continue with Google"
+    RESEND_API_KEY                   password-reset emails
+    YTDLP_COOKIES_FILE               YouTube imports blocked by bot checks
+    YTDLP_PROXY                      same, via a proxy
+
+
+5. FIRST CLIP
+-------------
+  Dashboard → "New project" → paste a YouTube/Kick link *or* upload a file you own
+  → pick length (15/30/45/60/90s) → Start clipping.
+  Watch the live progress, then open a clip in the studio to trim, restyle captions,
+  regenerate SEO, rebuild the thumbnail, and export MP4/SRT.
+
+  NOTE: media processing needs FFmpeg on PATH. If the job stays "queued", the worker
+  is not running — start it with `npm run worker`.
+
+
+6. TROUBLESHOOTING (short version)
+----------------------------------
+  "ffmpeg not found"            install FFmpeg, or set FFMPEG_PATH in .env.local
+  job queued forever            worker not running
+  "Sign in to confirm you're not a bot"   YouTube IP block → set YTDLP_COOKIES_FILE
+                                or YTDLP_PROXY, or just upload the file
+  boxes instead of Hindi/Nepali  npm run setup:fonts (Linux) / install Noto Sans Devanagari
+  port 3000 busy                PORT=4000 npm run host
+  full list                     clipwave/README.md → Troubleshooting
+
+
+7. KEEPING SECRETS OUT OF GIT
+-----------------------------
+  .gitignore already excludes .env*, data/, .next/ and node_modules/.
+  .env.local in this archive contains the Supabase database password — rotate it in
+  the Supabase dashboard if you plan to publish or share this folder.

@@ -1,0 +1,53 @@
+{
+  "name": "clipwave",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "tsx scripts/ensure-ytdlp.ts",
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "preworker": "tsx scripts/ensure-ytdlp.ts",
+    "worker": "tsx src/worker/index.ts",
+    "db:init": "tsx scripts/db-init.ts",
+    "db:reset": "tsx scripts/db-reset.ts",
+    "seed": "tsx scripts/seed.ts",
+    "predev:all": "tsx scripts/ensure-ytdlp.ts",
+    "dev:all": "sh scripts/dev-all.sh",
+    "setup:fonts": "sh scripts/setup-fonts.sh",
+    "setup:ytdlp": "tsx scripts/ensure-ytdlp.ts",
+    "setup:python": "node scripts/setup-python.mjs",
+    "thumbnails:backfill": "tsx scripts/backfill-thumbnails.ts",
+    "db:copy": "tsx scripts/copy-sqlite-to-postgres.ts",
+    "host": "bash scripts/local-host.sh"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^14.14.0",
+    "lucide-react": "^1.77.0",
+    "next": "^15.5.29",
+    "pg": "^8.23.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "sharp": "^0.35.5",
+    "tailwind-merge": "^3.7.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^15.5.29",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}
