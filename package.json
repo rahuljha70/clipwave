@@ -24,6 +24,7 @@
     "host": "bash scripts/local-host.sh"
   },
   "dependencies": {
+    "@netlify/database": "^2.0.3",
     "better-sqlite3": "^12.11.1",
     "clsx": "^2.1.1",
     "framer-motion": "^14.14.0",
