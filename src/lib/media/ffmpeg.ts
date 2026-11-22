@@ -82,8 +82,20 @@ export async function probe(file: string): Promise<ProbeInfo> {
     { timeoutMs: 60_000 },
   );
   if (code !== 0) throw new Error(`ffprobe failed: ${stderr.slice(-400)}`);
-  const data = JSON.parse(stdout);
-  const streams: any[] = data.streams ?? [];
+  const data = JSON.parse(stdout) as {
+    format?: { duration?: string; bit_rate?: string };
+    streams?: Array<{
+      codec_type?: string;
+      duration?: string;
+      avg_frame_rate?: string;
+      width?: number;
+      height?: number;
+      codec_name?: string;
+      tags?: { rotate?: string };
+      side_data_list?: Array<{ rotation?: number }>;
+    }>;
+  };
+  const streams = data.streams ?? [];
   const video = streams.find((s) => s.codec_type === "video");
   const audio = streams.find((s) => s.codec_type === "audio");
   const duration = Number(data.format?.duration ?? video?.duration ?? 0);
@@ -271,6 +283,7 @@ export function resolutionFor(aspect: string, shortSide: number): { w: number; h
 export function cropExpression(points: CropPoint[], clipDuration: number): string {
   const pts = [...points]
     .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.x))
+    .map((point) => ({ ...point, t: Math.max(0, Math.min(clipDuration, point.t)) }))
     .sort((a, b) => a.t - b.t);
   if (pts.length === 0) return "(iw-ow)/2";
   if (pts.length === 1) return `min(max(0,${pts[0].x.toFixed(1)}),iw-ow)`;

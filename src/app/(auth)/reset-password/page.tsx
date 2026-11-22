@@ -8,6 +8,7 @@ import { AuthCard, FormError } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 import { apiPost } from "@/lib/client/api";
+import { errorMessage } from "@/lib/utils";
 
 function ResetForm() {
   const params = useSearchParams();
@@ -31,8 +32,8 @@ function ResetForm() {
       await apiPost("/api/auth/reset-password", { token, password });
       setDone(true);
       setTimeout(() => router.push("/login"), 1800);
-    } catch (err: any) {
-      setError(err?.message ?? "Could not reset your password.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Could not reset your password."));
     } finally {
       setBusy(false);
     }

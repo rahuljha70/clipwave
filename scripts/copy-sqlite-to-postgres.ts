@@ -9,8 +9,10 @@
  */
 import os from "node:os";
 import path from "node:path";
+import Database from "better-sqlite3";
 import { env } from "../src/lib/env";
-import { db, q1, run } from "../src/lib/db";
+import { db, q1, run, type SqlValue } from "../src/lib/db";
+import { errorMessage } from "../src/lib/utils";
 
 const TABLES = [
   "users",
@@ -32,12 +34,6 @@ async function main() {
     throw new Error("DATABASE_URL is empty — set it to your Postgres/Supabase connection string first.");
   }
   const sqliteFile = path.resolve(env.sqlitePath);
-  let Database: any;
-  try {
-    Database = require("better-sqlite3");
-  } catch {
-    throw new Error("better-sqlite3 is not installed.");
-  }
   const source = new Database(sqliteFile, { readonly: true });
   console.log(`source  ${sqliteFile} (${os.platform()})`);
   console.log(`target  ${env.databaseUrl.replace(/:\/\/[^@]+@/, "://***@")}`);
@@ -52,7 +48,7 @@ async function main() {
   }
 
   for (const table of TABLES) {
-    const rows = source.prepare(`SELECT * FROM ${table}`).all() as Record<string, any>[];
+    const rows = source.prepare(`SELECT * FROM ${table}`).all() as Record<string, SqlValue>[];
     await run(`DELETE FROM ${table}`);
     let copied = 0;
     for (const row of rows) {
@@ -69,10 +65,9 @@ async function main() {
 
   source.close();
   console.log("done — restart the app and worker to use the new database");
-  process.exit(0);
 }
 
-main().catch((err) => {
-  console.error(String(err?.message ?? err));
+main().catch((err: unknown) => {
+  console.error(errorMessage(err));
   process.exit(1);
 });

@@ -10,10 +10,11 @@ import { Tabs } from "@/components/ui/tabs";
 import { useApi } from "@/lib/client/api";
 import { useState } from "react";
 import { formatBytes, relativeTime } from "@/lib/utils";
+import type { ExportDto } from "@/lib/contracts";
 
 export default function ExportsPage() {
   const [filter, setFilter] = useState<"all" | "video" | "srt">("all");
-  const { data, loading } = useApi<{ exports: any[] }>("/api/exports?limit=120");
+  const { data, loading } = useApi<{ exports: ExportDto[] }>("/api/exports?limit=120");
 
   const exports = (data?.exports ?? []).filter((row) =>
     filter === "all" ? true : row.kind === filter,

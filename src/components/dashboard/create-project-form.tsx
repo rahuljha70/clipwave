@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { apiPost, uploadVideo } from "@/lib/client/api";
 import { CLIP_LENGTHS, SUBTITLE_STYLES } from "@/lib/plans";
-import { cn, formatBytes, formatDuration, platformFromUrl } from "@/lib/utils";
+import { cn, errorMessage, formatBytes, formatDuration, platformFromUrl } from "@/lib/utils";
 
 interface ResolvedSource {
   title: string;
@@ -83,8 +83,8 @@ export function CreateProjectForm({
       );
       setSource(res.source);
       if (!res.entitlement.allowed && res.entitlement.reason) setError(res.entitlement.reason);
-    } catch (err: any) {
-      setError(err?.message ?? "We could not read that video.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "We could not read that video."));
     } finally {
       setResolving(false);
     }
@@ -124,8 +124,8 @@ export function CreateProjectForm({
         toast.success("Import started", "Analysing the source — this page will update live.");
         router.push(`/dashboard/projects/${created.projectId}`);
       }
-    } catch (err: any) {
-      setError(err?.message ?? "Could not start this project.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Could not start this project."));
       setSubmitting(false);
     }
   };

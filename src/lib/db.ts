@@ -10,10 +10,11 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import type { PoolClient, QueryResultRow } from "pg";
 import { env } from "./env";
 
 export type SqlValue = string | number | null | boolean;
-export type Row = Record<string, any>;
+export type Row = QueryResultRow;
 
 export interface Driver {
   name: "sqlite" | "postgres";
@@ -34,8 +35,8 @@ function normalize(params: SqlValue[] = []): SqlValue[] {
 /* SQLite                                                                      */
 /* -------------------------------------------------------------------------- */
 
-function createSqliteDriver(file: string): Driver {
-  const Database = require("better-sqlite3");
+async function createSqliteDriver(file: string): Promise<Driver> {
+  const { default: Database } = await import("better-sqlite3");
   fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   const db = new Database(path.resolve(file));
   db.pragma("journal_mode = WAL");
@@ -73,82 +74,63 @@ function toPgPlaceholders(sql: string): string {
   return sql.replace(/\?/g, () => `$${++i}`);
 }
 
-function createPostgresDriver(url: string): Driver {
-  const { Pool } = require("pg");
+async function createPostgresDriver(url: string): Promise<Driver> {
+  const { Pool } = await import("pg");
   const pool = new Pool({
     connectionString: url,
     max: Number(process.env.PG_POOL_MAX ?? 10),
     ssl: /supabase|sslmode=require/.test(url) ? { rejectUnauthorized: false } : undefined,
   });
 
-  const binder = (client: any): Driver => ({
+  const binder = (client?: PoolClient): Driver => ({
     name: "postgres",
     async all<T>(sql: string, params: SqlValue[] = []) {
-      const res = await client.query(toPgPlaceholders(sql), normalize(params));
+      const query = toPgPlaceholders(sql);
+      const values = normalize(params);
+      const res = client ? await client.query(query, values) : await pool.query(query, values);
       return res.rows as T[];
     },
     async get<T>(sql: string, params: SqlValue[] = []) {
-      const res = await client.query(toPgPlaceholders(sql), normalize(params));
+      const query = toPgPlaceholders(sql);
+      const values = normalize(params);
+      const res = client ? await client.query(query, values) : await pool.query(query, values);
       return (res.rows[0] ?? null) as T | null;
     },
     async run(sql: string, params: SqlValue[] = []) {
-      const res = await client.query(toPgPlaceholders(sql), normalize(params));
+      const query = toPgPlaceholders(sql);
+      const values = normalize(params);
+      const res = client ? await client.query(query, values) : await pool.query(query, values);
       return { changes: res.rowCount ?? 0 };
     },
     async exec(sql: string) {
-      await client.query(sql);
+      if (client) await client.query(sql);
+      else await pool.query(sql);
     },
     async close() {
-      /* the pool owns the connection */
+      if (!client) await pool.end();
     },
     async withTransaction<T>(fn: (d: Driver) => Promise<T>) {
-      return fn(binder(client));
-    },
-  });
-
-  return {
-    ...binder(null),
-    async all<T>(sql: string, params: SqlValue[] = []) {
-      const res = await pool.query(toPgPlaceholders(sql), normalize(params));
-      return res.rows as T[];
-    },
-    async get<T>(sql: string, params: SqlValue[] = []) {
-      const res = await pool.query(toPgPlaceholders(sql), normalize(params));
-      return (res.rows[0] ?? null) as T | null;
-    },
-    async run(sql: string, params: SqlValue[] = []) {
-      const res = await pool.query(toPgPlaceholders(sql), normalize(params));
-      return { changes: res.rowCount ?? 0 };
-    },
-    async exec(sql: string) {
-      await pool.query(sql);
-    },
-    async close() {
-      await pool.end();
-    },
-    /**
-     * pgbouncer/BEGIN must happen on one connection, so borrow a client for the
-     * whole transaction instead of round-tripping through the pool.
-     */
-    async withTransaction<T>(fn: (d: Driver) => Promise<T>) {
-      const client = await pool.connect();
+      if (client) return fn(binder(client));
+      const transactionClient = await pool.connect();
       try {
-        await client.query("BEGIN");
-        const out = await fn(binder(client));
-        await client.query("COMMIT");
-        return out;
-      } catch (err) {
+        await transactionClient.query("BEGIN");
+        const result = await fn(binder(transactionClient));
+        await transactionClient.query("COMMIT");
+        return result;
+      } catch (error) {
         try {
-          await client.query("ROLLBACK");
+          await transactionClient.query("ROLLBACK");
         } catch {
           /* connection already gone */
         }
-        throw err;
+        throw error;
       } finally {
-        client.release();
+        transactionClient.release();
       }
     },
-  };
+  });
+
+  return binder();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -156,7 +138,6 @@ function createPostgresDriver(url: string): Driver {
 /* -------------------------------------------------------------------------- */
 
 declare global {
-  // eslint-disable-next-line no-var
   var __clipwaveDb: Promise<Driver> | undefined;
 }
 
@@ -170,8 +151,8 @@ function migrateSqlStatements(sql: string): string[] {
 
 async function init(): Promise<Driver> {
   const driver = env.databaseUrl
-    ? createPostgresDriver(env.databaseUrl)
-    : createSqliteDriver(env.sqlitePath);
+    ? await createPostgresDriver(env.databaseUrl)
+    : await createSqliteDriver(env.sqlitePath);
 
   // Netlify Database applies the files in netlify/database/migrations before a
   // deploy is published. Its runtime role is intentionally not allowed to run
@@ -197,9 +178,10 @@ async function init(): Promise<Driver> {
       for (const statement of migrateSqlStatements(sql)) {
         try {
           await driver.exec(statement);
-        } catch (err: any) {
+        } catch (error: unknown) {
           // CREATE INDEX IF NOT EXISTS etc. are idempotent; ignore "already exists".
-          if (!/already exists|duplicate/i.test(String(err?.message))) throw err;
+          const message = error instanceof Error ? error.message : String(error);
+          if (!/already exists|duplicate/i.test(message)) throw error;
         }
       }
       await driver.run(`INSERT INTO _migrations (name, applied_at) VALUES (?, ?)`, [

@@ -9,18 +9,20 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { apiPatch, apiPut, useApi } from "@/lib/client/api";
 import { CLIP_LENGTHS, SUBTITLE_STYLES } from "@/lib/plans";
+import { errorMessage } from "@/lib/utils";
+import type { AuthMeResponse, UserSettings } from "@/lib/contracts";
 
 export default function SettingsPage() {
   const toast = useToast();
-  const { data: auth } = useApi<any>("/api/auth/me");
-  const { data: settingsData, refresh } = useApi<{ settings: any }>("/api/settings");
+  const { data: auth } = useApi<AuthMeResponse>("/api/auth/me");
+  const { data: settingsData, refresh } = useApi<{ settings: UserSettings }>("/api/settings");
 
   const [name, setName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
@@ -42,8 +44,8 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       toast.success("Profile updated");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not update the profile");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not update the profile"));
     } finally {
       setSavingProfile(false);
     }
@@ -55,8 +57,8 @@ export default function SettingsPage() {
       await apiPut("/api/settings", settings);
       toast.success("Defaults saved", "New projects will use these settings.");
       await refresh();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not save settings");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not save settings"));
     } finally {
       setSavingSettings(false);
     }

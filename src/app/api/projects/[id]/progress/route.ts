@@ -27,8 +27,11 @@ export const POST = route<Ctx>("projects.progress.post", async (req, ctx) => {
   if (!row) throw notFound("Project not found.");
   if (row.user_id !== user.id && user.role !== "admin") throw forbidden();
 
-  const body = await req.json().catch(() => ({}));
-  const action = String((body as any)?.action ?? "retry");
+  const body: unknown = await req.json().catch(() => ({}));
+  const action =
+    typeof body === "object" && body !== null && "action" in body && typeof body.action === "string"
+      ? body.action
+      : "retry";
 
   if (action === "cancel") {
     const job = await q1<Row>(

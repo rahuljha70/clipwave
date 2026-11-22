@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 import { useApi } from "@/lib/client/api";
 import { relativeTime } from "@/lib/utils";
+import type { ProjectDto } from "@/lib/serializers";
 
 export default function QueuePage() {
-  const { data, loading, refresh } = useApi<{ projects: any[] }>("/api/projects?limit=100", {
+  const { data, loading, refresh } = useApi<{ projects: ProjectDto[] }>("/api/projects?limit=100", {
     refreshMs: 4000,
   });
 

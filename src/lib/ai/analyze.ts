@@ -297,7 +297,7 @@ export async function detectMoments(
           score: clamp(score, 1, 99),
           category,
           reason: "",
-          hook: makeHook(hookText, category),
+          hook: makeHook(hookText),
           bestPlatform: platformFor(category, duration),
           improvements: [],
           breakdown: {
@@ -375,7 +375,7 @@ function endsCleanly(text: string) {
   return /[.!?]"?$/.test(text.trim());
 }
 
-function makeHook(sentence: string, category: MomentCategory): string {
+function makeHook(sentence: string): string {
   const clean = sentence
     .replace(/^(so|and|but|um|uh|like|you know|okay|ok)[,\s]+/i, "")
     .replace(/\s+/g, " ")
@@ -389,7 +389,7 @@ function finalise(moment: Moment, target: number, sentences: Sentence[], transcr
   // Snap to safe boundaries: never cut a word, keep ~0.3 s of lead-in / tail.
   const first = moment.words[0];
   const last = moment.words[moment.words.length - 1];
-  let start = Math.max(0, Math.min(moment.start, first.start - 0.35));
+  const start = Math.max(0, Math.min(moment.start, first.start - 0.35));
   let end = Math.min(last.end + 0.45, Math.max(moment.end, last.end + 0.2));
   if (end - start < target * 0.6) end = Math.min(last.end + 1.2, start + target * 0.8);
 

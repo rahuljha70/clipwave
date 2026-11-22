@@ -66,6 +66,34 @@ export interface DetectedSource {
   channelHint?: string;
 }
 
+interface YtDlpInfo {
+  duration?: number;
+  live_status?: string;
+  title?: string;
+  uploader?: string;
+  channel?: string;
+  description?: string;
+  thumbnail?: string;
+  view_count?: number;
+  upload_date?: string;
+  is_live?: boolean;
+}
+
+interface KickVideoInfo {
+  duration?: number;
+  start_time?: string;
+  end_time?: string;
+  session_title?: string;
+  channel?: { slug?: string };
+  thumbnail?: { src?: string; url?: string };
+  views?: number;
+  created_at?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function detectPlatform(rawUrl: string): DetectedSource {
   const url = rawUrl.trim();
   if (!url) throw new SourceError("invalid_url", "Paste a video link to get started.");
@@ -159,7 +187,7 @@ function ytdlpArgs(): string[] {
   return args;
 }
 
-function assertVideoReady(info: any, platform: "YouTube" | "Kick"): void {
+function assertVideoReady(info: YtDlpInfo | null, platform: "YouTube" | "Kick"): void {
   const status = typeof info?.live_status === "string" ? info.live_status : null;
 
   // `was_live` is an archived replay and should go through the same clip pipeline as a regular video.
@@ -229,7 +257,7 @@ async function youtubeOEmbed(id: string) {
       { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } },
     );
     if (res.ok) {
-      const data: any = await res.json();
+      const data = (await res.json()) as { title?: string; author_name?: string };
       return {
         title: String(data.title ?? "YouTube video"),
         channel: data.author_name ? String(data.author_name) : null,
@@ -246,7 +274,7 @@ async function youtubeOEmbed(id: string) {
   return { title: null, channel: null, thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` };
 }
 
-async function ytdlpJson(url: string): Promise<any | null> {
+async function ytdlpJson(url: string): Promise<YtDlpInfo | null> {
   let binary: string;
   try {
     binary = await ensureYtDlpAvailable();
@@ -260,7 +288,7 @@ async function ytdlpJson(url: string): Promise<any | null> {
     binary,
     [...ytdlpArgs(), "--dump-single-json", "--skip-download", url],
     { timeoutMs: 60_000 },
-  ).catch(() => ({ code: 1, stdout: "", stderr: "" }) as any);
+  ).catch(() => ({ code: 1, stdout: "", stderr: "" }));
   if (code !== 0 || !stdout.trim()) {
     if (
       stderr &&
@@ -273,7 +301,8 @@ async function ytdlpJson(url: string): Promise<any | null> {
     return null;
   }
   try {
-    return JSON.parse(stdout);
+    const parsed: unknown = JSON.parse(stdout);
+    return isRecord(parsed) ? (parsed as YtDlpInfo) : null;
   } catch {
     return null;
   }
@@ -306,7 +335,7 @@ export async function resolveSource(rawUrl: string): Promise<SourceMeta> {
   }
 
   if (detected.platform === "kick") {
-    let apiData: any = null;
+    let apiData: KickVideoInfo | null = null;
     try {
       const res = await fetch(`https://kick.com/api/v2/videos/${detected.sourceId}`, {
         signal: AbortSignal.timeout(10_000),
@@ -316,7 +345,10 @@ export async function resolveSource(rawUrl: string): Promise<SourceMeta> {
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
         },
       });
-      if (res.ok) apiData = await res.json();
+      if (res.ok) {
+        const payload: unknown = await res.json();
+        if (isRecord(payload)) apiData = payload as KickVideoInfo;
+      }
       else if (res.status === 404)
         throw new SourceError("unavailable", "This Kick VOD no longer exists.");
     } catch (err) {

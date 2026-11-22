@@ -4,7 +4,7 @@ import { badRequest, json, readJson, requireUser, route } from "@/lib/api";
 import { nowIso, q, q1, run, type Row } from "@/lib/db";
 import { getEffectivePlan } from "@/lib/plans";
 import { assertCanProcess, clipsAllowed, getUsage } from "@/lib/entitlements";
-import { detectPlatform, resolveSource, SourceError } from "@/lib/sources";
+import { resolveSource, SourceError } from "@/lib/sources";
 import { enqueue } from "@/lib/jobs";
 import { projectToDto } from "@/lib/serializers";
 
@@ -38,14 +38,6 @@ export const POST = route("projects.create", async (req) => {
   const parsed = createSchema.safeParse(await readJson(req));
   if (!parsed.success) throw badRequest(parsed.error.issues[0]?.message ?? "Invalid project settings.");
   const input = parsed.data;
-
-  let detected;
-  try {
-    detected = detectPlatform(input.url);
-  } catch (error) {
-    if (error instanceof SourceError) return json({ error: error.message, code: error.code }, 422);
-    throw error;
-  }
 
   let meta;
   try {

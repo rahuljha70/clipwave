@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { badRequest, forbidden, json, notFound, readJson, requireUser, route } from "@/lib/api";
-import { nowIso, parseJson, q1, run, type Row } from "@/lib/db";
+import { nowIso, parseJson, q1, run, type Row, type SqlValue } from "@/lib/db";
 import { clipToDto, mediaUrl } from "@/lib/clip-utils";
 import { projectToDto } from "@/lib/serializers";
 import type { Word } from "@/lib/media/subtitles";
@@ -41,9 +41,9 @@ export const GET = route<Ctx>("clips.get", async (_req, ctx) => {
 
 const patchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  seo: z.record(z.string(), z.any()).optional(),
-  edits: z.record(z.string(), z.any()).optional(),
-  subtitleConfig: z.record(z.string(), z.any()).optional(),
+  seo: z.record(z.string(), z.unknown()).optional(),
+  edits: z.record(z.string(), z.unknown()).optional(),
+  subtitleConfig: z.record(z.string(), z.unknown()).optional(),
   startSec: z.number().min(0).optional(),
   endSec: z.number().min(0).optional(),
   saved: z.boolean().optional(),
@@ -62,7 +62,7 @@ export const PATCH = route<Ctx>("clips.patch", async (req, ctx) => {
   const body = parsed.data;
 
   const fields: string[] = [];
-  const params: any[] = [];
+  const params: SqlValue[] = [];
   if (body.title) {
     fields.push("title = ?");
     params.push(body.title);

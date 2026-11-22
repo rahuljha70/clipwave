@@ -1,5 +1,5 @@
 import { json, requireAdmin, route } from "@/lib/api";
-import { q, type Row } from "@/lib/db";
+import { q, type Row, type SqlValue } from "@/lib/db";
 
 export const GET = route("admin.users", async (req) => {
   await requireAdmin();
@@ -9,7 +9,7 @@ export const GET = route("admin.users", async (req) => {
   const limit = Math.min(200, Number(url.searchParams.get("limit") ?? 50));
 
   const where: string[] = [];
-  const params: any[] = [];
+  const params: SqlValue[] = [];
   if (search) {
     where.push("(u.email LIKE ? OR u.name LIKE ?)");
     params.push(`%${search}%`, `%${search}%`);

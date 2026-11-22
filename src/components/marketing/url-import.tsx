@@ -17,7 +17,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { apiPost, uploadVideo } from "@/lib/client/api";
-import { cn, formatDuration, platformFromUrl } from "@/lib/utils";
+import { cn, errorMessage, formatDuration, platformFromUrl } from "@/lib/utils";
 
 interface SourceMeta {
   title: string;
@@ -74,8 +74,8 @@ export function UrlImport({
       toast.success("Import started", "Clipwave is fetching the source and finding clips.");
       if (onCreated) onCreated(created.projectId);
       else router.push(`/dashboard/projects/${created.projectId}`);
-    } catch (err: any) {
-      setError(err?.message ?? "We could not import that video.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "We could not import that video."));
     } finally {
       setBusy(false);
     }
@@ -95,12 +95,12 @@ export function UrlImport({
       if (!res.entitlement.allowed && res.entitlement.reason) {
         setError(res.entitlement.reason);
       }
-    } catch (err: any) {
-      if (err?.status === 401) {
+    } catch (err: unknown) {
+      if (typeof err === "object" && err !== null && "status" in err && err.status === 401) {
         setPreview(null);
         setError(null);
       } else {
-        setError(err?.message ?? "We could not read that video.");
+        setError(errorMessage(err, "We could not read that video."));
       }
     } finally {
       setBusy(false);
@@ -123,8 +123,8 @@ export function UrlImport({
       toast.success("Upload complete", "Processing has started.");
       if (onCreated) onCreated(created.projectId);
       else router.push(`/dashboard/projects/${created.projectId}`);
-    } catch (err: any) {
-      setError(err?.message ?? "Upload failed.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Upload failed."));
     } finally {
       setBusy(false);
       setUploading(0);

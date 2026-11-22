@@ -3,7 +3,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "@/components/brand";
 import { LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,8 @@ const LINKS = [
 
 export function MarketingNav({ authed }: { authed: boolean }) {
   const { scrollY } = useScroll();
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const opacity = useTransform(scrollY, [0, 80], [0, 1]);
-
-  useEffect(() => scrollY.on("change", (v) => setScrolled(v > 24)), [scrollY]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-40">

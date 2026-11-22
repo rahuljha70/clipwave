@@ -2,7 +2,7 @@ import { z } from "zod";
 import { badRequest, json, readJson, requireUser, route } from "@/lib/api";
 import { hashPassword, publicUser, verifyPassword } from "@/lib/auth";
 import { getSessionUser } from "@/lib/auth";
-import { nowIso, q1, run, type Row } from "@/lib/db";
+import { nowIso, q1, run, type Row, type SqlValue } from "@/lib/db";
 
 const schema = z.object({
   name: z.string().min(1).max(80).optional(),
@@ -17,7 +17,7 @@ export const PATCH = route("auth.profile", async (req) => {
   if (!parsed.success) throw badRequest("Invalid profile details.");
 
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: SqlValue[] = [];
   if (parsed.data.name) {
     updates.push("name = ?");
     params.push(parsed.data.name);

@@ -4,7 +4,6 @@ import {
   hashPassword,
   randomToken,
   sha256,
-  verifyPassword,
 } from "./auth-crypto";
 import { cookies } from "next/headers";
 import { env } from "./env";

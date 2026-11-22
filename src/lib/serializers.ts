@@ -1,6 +1,30 @@
 import type { Row } from "./db";
 
-export function projectToDto(row: Row) {
+export interface ProjectDto {
+  id: string;
+  title: string;
+  platform: string;
+  sourceUrl: string;
+  sourceType: string;
+  channel: string | null;
+  thumbnailUrl: string | null;
+  description: string | null;
+  durationSec: number;
+  status: string;
+  stage: string;
+  progress: number;
+  error: string | null;
+  clipCount: number;
+  readyClips: number;
+  requestedClips: number;
+  targetLength: number;
+  aspect: string;
+  language: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+export function projectToDto(row: Row): ProjectDto {
   return {
     id: row.id,
     title: row.title,

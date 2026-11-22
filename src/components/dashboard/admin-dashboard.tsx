@@ -17,13 +17,14 @@ import { useState } from "react";
 import { GlassCard, StatCard } from "@/components/ui/card";
 import { Badge, PlanBadge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/field";
+import { Select } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/progress";
 import { Tabs } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
-import { apiGet, apiPatch, apiPost, useApi } from "@/lib/client/api";
-import { formatBytes, relativeTime } from "@/lib/utils";
+import { apiPatch, apiPost, useApi } from "@/lib/client/api";
+import { errorMessage, formatBytes, relativeTime } from "@/lib/utils";
+import type { AdminError, AdminFailedJob, AdminJob, AdminStats, AdminUser } from "@/lib/contracts";
 
 type Tab = "overview" | "users" | "jobs" | "errors";
 
@@ -35,15 +36,15 @@ export function AdminDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [creditAdjust, setCreditAdjust] = useState<Record<string, string>>({});
 
-  const { data: stats, loading: statsLoading, refresh: refreshStats } = useApi<any>("/api/admin/stats");
-  const { data: usersData, refresh: refreshUsers } = useApi<{ users: any[] }>(
+  const { data: stats, loading: statsLoading, refresh: refreshStats } = useApi<AdminStats>("/api/admin/stats");
+  const { data: usersData, refresh: refreshUsers } = useApi<{ users: AdminUser[] }>(
     `/api/admin/users?limit=100${query ? `&q=${encodeURIComponent(query)}` : ""}${userFilter ? `&plan=${userFilter}` : ""}`,
   );
-  const { data: jobsData, refresh: refreshJobs } = useApi<{ jobs: any[]; counts: Record<string, number> }>(
+  const { data: jobsData, refresh: refreshJobs } = useApi<{ jobs: AdminJob[]; counts: Record<string, number> }>(
     "/api/admin/jobs?limit=100",
     { refreshMs: tab === "jobs" ? 5000 : undefined },
   );
-  const { data: errorsData, refresh: refreshErrors } = useApi<{ errors: any[]; failedJobs: any[] }>(
+  const { data: errorsData } = useApi<{ errors: AdminError[]; failedJobs: AdminFailedJob[] }>(
     "/api/admin/errors",
   );
 
@@ -53,8 +54,8 @@ export function AdminDashboard() {
       await apiPatch(`/api/admin/users/${id}`, patch);
       toast.success("User updated");
       await Promise.all([refreshUsers(), refreshStats()]);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Update failed");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Update failed"));
     } finally {
       setBusy(null);
     }
@@ -72,8 +73,8 @@ export function AdminDashboard() {
       await apiPost(`/api/admin/jobs/${id}`, { action });
       toast.success(`Job ${action === "cancel" ? "canceled" : "requeued"}`);
       await refreshJobs();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Action failed");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Action failed"));
     } finally {
       setBusy(null);
     }
@@ -209,7 +210,7 @@ export function AdminDashboard() {
                     Newest accounts
                   </p>
                   <div className="mt-1.5 space-y-1">
-                    {(stats?.users.new ?? []).map((user: any) => (
+                    {(stats?.users.new ?? []).map((user) => (
                       <p key={user.id} className="truncate text-[11.5px] text-white/45">
                         {user.email} · {user.projects} projects
                       </p>

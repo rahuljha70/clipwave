@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock,
   Download,
-  FileText,
   Film,
   Languages,
   Loader2,
@@ -22,13 +21,17 @@ import { ClipCard } from "@/components/dashboard/clip-card";
 import { GlassCard, StatCard } from "@/components/ui/card";
 import { Badge, PlatformBadge, ScorePill, StatusDot } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
-import { Progress, RingProgress, Skeleton } from "@/components/ui/progress";
+import { RingProgress, Skeleton } from "@/components/ui/progress";
 import { Tabs } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
 import { apiDelete, apiPost, useApi } from "@/lib/client/api";
-import { cn, formatDuration, relativeTime, scoreTone } from "@/lib/utils";
+import { cn, errorMessage, formatDuration, relativeTime } from "@/lib/utils";
 import { KickGlyph, YouTubeGlyph } from "@/components/marketing/url-import";
+import type { ProjectDetailsResponse } from "@/lib/contracts";
+import type { ClipDto } from "@/lib/clip-utils";
+
+const EMPTY_CLIPS: ClipDto[] = [];
 
 const STAGES = [
   { key: "fetch", label: "Fetch source", match: /fetch/i },
@@ -48,9 +51,9 @@ export default function ProjectDetailPage() {
   const [tab, setTab] = useState<"clips" | "analysis" | "logs" | "exports">("clips");
   const [busy, setBusy] = useState(false);
 
-  const { data, loading } = useApi<any>(`/api/projects/${projectId}`, { refreshMs: 3000 });
+  const { data, loading } = useApi<ProjectDetailsResponse>(`/api/projects/${projectId}`, { refreshMs: 3000 });
   const project = data?.project;
-  const clips: any[] = data?.clips ?? [];
+  const clips = data?.clips ?? EMPTY_CLIPS;
   const isProcessing = project?.status === "processing" || project?.status === "queued";
 
   const stats = useMemo(() => {
@@ -72,8 +75,8 @@ export default function ProjectDetailPage() {
     try {
       await apiPost(`/api/projects/${projectId}/progress`, { action: "retry" });
       toast.success("Retry queued");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not retry");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not retry"));
     } finally {
       setBusy(false);
     }
@@ -86,8 +89,8 @@ export default function ProjectDetailPage() {
       await apiDelete(`/api/projects/${projectId}`);
       toast.success("Project deleted");
       router.push("/dashboard/projects");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not delete");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not delete"));
       setBusy(false);
     }
   };
@@ -277,7 +280,7 @@ export default function ProjectDetailPage() {
 
               {data?.logs?.length ? (
                 <div className="mt-4 max-h-32 overflow-y-auto rounded-xl border border-white/8 bg-ink-950/50 p-3 font-mono text-[10.5px] leading-relaxed text-white/45">
-                  {data.logs.slice(-14).map((log: any, i: number) => (
+                  {data.logs.slice(-14).map((log, i) => (
                     <p key={i} className={log.level === "error" ? "text-rose-300/80" : ""}>
                       <span className="text-white/25">
                         {new Date(log.created_at).toLocaleTimeString()}{" "}
@@ -370,7 +373,7 @@ export default function ProjectDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {(project.moments ?? []).map((moment: any, i: number) => (
+                {(project.moments ?? []).map((moment, i) => (
                   <tr key={i} className="border-b border-white/5 text-[12px] text-white/65 hover:bg-white/[0.03]">
                     <td className="px-4 py-2.5 text-white/30">{i + 1}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[11px] text-white/45">
@@ -400,7 +403,7 @@ export default function ProjectDetailPage() {
       {tab === "logs" ? (
         <GlassCard className="p-4">
           <div className="max-h-[28rem] overflow-y-auto rounded-xl bg-ink-950/60 p-4 font-mono text-[11px] leading-relaxed">
-            {(data?.logs ?? []).map((log: any, i: number) => (
+            {(data?.logs ?? []).map((log, i) => (
               <p key={i} className={log.level === "error" ? "text-rose-300/85" : "text-white/50"}>
                 <span className="text-white/25">{new Date(log.created_at).toLocaleTimeString()} </span>
                 {log.message}
@@ -417,7 +420,7 @@ export default function ProjectDetailPage() {
         <GlassCard className="p-4">
           {(data?.exports ?? []).length ? (
             <div className="divide-y divide-white/6">
-              {data.exports.map((exp: any) => (
+              {data.exports.map((exp) => (
                 <div key={exp.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate text-[12.5px] text-white/80">{exp.label ?? "Export"}</p>

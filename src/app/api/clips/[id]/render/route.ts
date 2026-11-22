@@ -9,8 +9,8 @@ type Ctx = { params: Promise<{ id: string }> };
 const schema = z.object({
   startSec: z.number().min(0).optional(),
   endSec: z.number().min(0).optional(),
-  subtitleConfig: z.record(z.string(), z.any()).optional(),
-  edits: z.record(z.string(), z.any()).optional(),
+  subtitleConfig: z.record(z.string(), z.unknown()).optional(),
+  edits: z.record(z.string(), z.unknown()).optional(),
   words: z
     .array(
       z.object({

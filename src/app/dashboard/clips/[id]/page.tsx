@@ -36,7 +36,8 @@ import { Tabs } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
 import { apiPatch, apiPost, useApi } from "@/lib/client/api";
-import { cn, formatTimecode } from "@/lib/utils";
+import { cn, errorMessage, formatTimecode } from "@/lib/utils";
+import type { ClipStudioResponse } from "@/lib/contracts";
 
 type TabId = "captions" | "trim" | "format" | "seo" | "score" | "thumbnail" | "export";
 
@@ -63,10 +64,10 @@ export default function ClipStudioPage() {
   const clipId = params.id;
   const toast = useToast();
 
-  const { data, loading, refresh } = useApi<any>(`/api/clips/${clipId}`, { refreshMs: 4000 });
+  const { data, loading, refresh } = useApi<ClipStudioResponse>(`/api/clips/${clipId}`, { refreshMs: 4000 });
   const clip = data?.clip;
   const project = data?.project;
-  const words: PreviewWord[] = data?.words ?? [];
+  const words = useMemo<PreviewWord[]>(() => data?.words ?? [], [data?.words]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const currentTime = useVideoTime(videoRef);
@@ -75,7 +76,7 @@ export default function ClipStudioPage() {
   const [title, setTitle] = useState("");
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(0);
-  const [edits, setEdits] = useState<Record<string, any>>({});
+  const [edits, setEdits] = useState<Record<string, unknown>>({});
   const [caption, setCaption] = useState<CaptionDraft>(DEFAULT_CAPTION);
   const [editedWords, setEditedWords] = useState<PreviewWord[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -99,10 +100,10 @@ export default function ClipStudioPage() {
       outroEnabled: false,
       ...(clip.edits ?? {}),
     });
-    const stored = clip.subtitleConfig as any;
+    const stored = clip.subtitleConfig;
     setCaption({
       ...DEFAULT_CAPTION,
-      ...(stored?.style ? styleFromPreset(stored.style, [stored.style]) : {}),
+      ...(typeof stored?.style === "string" ? styleFromPreset(stored.style, [stored.style]) : {}),
       ...(stored ?? {}),
     });
     setEditedWords(words);
@@ -116,7 +117,7 @@ export default function ClipStudioPage() {
 
   const markDirty = () => setDirty(true);
 
-  const updateEdits = (patch: Record<string, any>) => {
+  const updateEdits = (patch: Record<string, unknown>) => {
     setEdits((prev) => ({ ...prev, ...patch }));
     markDirty();
   };
@@ -154,8 +155,8 @@ export default function ClipStudioPage() {
       setDirty(false);
       toast.success("Saved", "Changes stored without re-rendering.");
       await refresh();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not save");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not save"));
     } finally {
       setSaving(false);
     }
@@ -182,8 +183,8 @@ export default function ClipStudioPage() {
       setDirty(false);
       toast.success("Re-render queued", "The worker will rebuild this clip — this page updates live.");
       setTimeout(() => void refresh(), 1500);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not re-render");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not re-render"));
     } finally {
       setRendering(false);
     }
@@ -195,8 +196,8 @@ export default function ClipStudioPage() {
       await apiPost(`/api/clips/${clipId}/seo`);
       toast.success("Metadata regenerating", "Takes a few seconds.");
       setTimeout(() => void refresh(), 2500);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not regenerate");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not regenerate"));
     } finally {
       setRegeneratingSeo(false);
     }
@@ -349,7 +350,7 @@ export default function ClipStudioPage() {
               }}
             />
             <div className="mt-2 flex items-center justify-between text-[10.5px] text-white/30">
-              <span>Synced to the rendered video's timeline</span>
+              <span>Synced to the rendered video’s timeline</span>
               <button
                 onClick={() => videoRef.current && (videoRef.current.currentTime = 0)}
                 className="hover:text-white"

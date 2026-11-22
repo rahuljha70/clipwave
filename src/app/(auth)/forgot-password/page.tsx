@@ -7,6 +7,7 @@ import { AuthCard, FormError } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 import { apiPost } from "@/lib/client/api";
+import { errorMessage } from "@/lib/utils";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -23,8 +24,8 @@ export default function ForgotPasswordPage() {
       const res = await apiPost<{ devResetUrl?: string }>("/api/auth/forgot-password", { email });
       setSent(true);
       if (res.devResetUrl) setDevLink(res.devResetUrl);
-    } catch (err: any) {
-      setError(err?.message ?? "Could not send the reset link.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Could not send the reset link."));
     } finally {
       setBusy(false);
     }
@@ -33,7 +34,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard
       title="Reset your password"
-      subtitle="Enter your account email and we'll send a one-hour reset link."
+      subtitle="Enter your account email and we’ll send a one-hour reset link."
       footer={
         <Link href="/login" className="inline-flex items-center gap-1.5 hover:text-white">
           <ArrowLeft className="size-3.5" /> Back to sign in
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
         <div className="space-y-4">
           <div className="rounded-xl border border-mint-400/25 bg-mint-400/10 px-3.5 py-3 text-[12.5px] leading-relaxed text-mint-200">
             If <span className="font-semibold">{email}</span> is registered, a reset link is on its
-            way. Check your spam folder if it doesn't arrive within a minute.
+              way. Check your spam folder if it doesn’t arrive within a minute.
           </div>
           {devLink ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11.5px] leading-relaxed text-white/50">

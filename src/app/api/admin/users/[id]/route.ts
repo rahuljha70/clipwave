@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { z } from "zod";
 import { badRequest, json, notFound, readJson, requireAdmin, route } from "@/lib/api";
-import { nowIso, q1, run, type Row } from "@/lib/db";
+import { nowIso, q1, run, type Row, type SqlValue } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,7 +36,7 @@ export const PATCH = route<Ctx>("admin.users.patch", async (req, ctx) => {
   }
 
   const fields: string[] = [];
-  const params: any[] = [];
+  const params: SqlValue[] = [];
   if (body.role) {
     fields.push("role = ?");
     params.push(body.role);

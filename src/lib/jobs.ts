@@ -4,7 +4,7 @@
  * or Whisper. Redis/BullMQ can be layered on top — see README.
  */
 import crypto from "node:crypto";
-import { nowIso, q, q1, run, transaction, type Row } from "./db";
+import { nowIso, q, q1, run, transaction, type Row, type SqlValue } from "./db";
 
 export type JobType = "process_project" | "render_clip" | "regenerate_seo";
 export type JobStatus = "queued" | "running" | "done" | "failed" | "canceled";
@@ -69,7 +69,7 @@ export async function updateJob(
   patch: { status?: JobStatus; progress?: number; stage?: string | null; error?: string | null },
 ) {
   const fields: string[] = [];
-  const params: any[] = [];
+  const params: SqlValue[] = [];
   if (patch.status) {
     fields.push("status = ?");
     params.push(patch.status);

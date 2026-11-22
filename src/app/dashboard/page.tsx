@@ -2,7 +2,6 @@
 
 import {
   ArrowRight,
-  Clock,
   Download,
   Film,
   HardDrive,
@@ -22,36 +21,11 @@ import { Progress, RingProgress, Skeleton } from "@/components/ui/progress";
 import { Badge, PlanBadge, StatusDot } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/misc";
 import { useApi } from "@/lib/client/api";
-import { formatBytes, relativeTime } from "@/lib/utils";
-
-interface DashboardData {
-  usage: {
-    plan: { id: string; name: string };
-    usedMinutes: number;
-    includedMinutes: number;
-    remainingMinutes: number;
-    percent: number;
-    clipsThisMonth: number;
-    periodStart: string;
-    isUnlimited: boolean;
-  };
-  series: { day: string; minutes: number; clips: number }[];
-  stats: {
-    projects: number;
-    clips: number;
-    readyClips: number;
-    savedClips: number;
-    exports: number;
-    processedMinutes: number;
-    storageBytes: number;
-  };
-  recentProjects: any[];
-  savedClips: any[];
-  queue: any[];
-}
+import { formatBytes } from "@/lib/utils";
+import type { DashboardResponse } from "@/lib/contracts";
 
 export default function DashboardPage() {
-  const { data, loading } = useApi<DashboardData>("/api/dashboard", { refreshMs: 12_000 });
+  const { data, loading } = useApi<DashboardResponse>("/api/dashboard", { refreshMs: 12_000 });
 
   if (loading && !data) {
     return (

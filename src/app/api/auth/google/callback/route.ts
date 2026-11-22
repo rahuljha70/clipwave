@@ -35,13 +35,19 @@ export const GET = route("auth.google.callback", async (req) => {
       }),
     });
     if (!tokenRes.ok) throw new Error("token exchange failed");
-    const tokens: any = await tokenRes.json();
+    const tokens = (await tokenRes.json()) as { access_token?: string };
+    if (!tokens.access_token) throw new Error("Google did not return an access token.");
 
     const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
       headers: { authorization: `Bearer ${tokens.access_token}` },
     });
     if (!profileRes.ok) throw new Error("profile fetch failed");
-    const profile: any = await profileRes.json();
+    const profile = (await profileRes.json()) as {
+      email?: string;
+      name?: string;
+      sub?: string;
+      picture?: string;
+    };
     const email = String(profile.email ?? "").toLowerCase();
     if (!email) throw new Error("no email on Google account");
 

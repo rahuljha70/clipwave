@@ -16,6 +16,7 @@ import { processProject, rerenderClip } from "../lib/pipeline";
 import { generateSeo } from "../lib/ai/seo";
 import { llmEnabled } from "../lib/env";
 import { momentFromClip } from "../lib/clip-utils";
+import { errorMessage } from "../lib/utils";
 
 const WORKER_ID = `${os.hostname()}-${crypto.randomBytes(4).toString("hex")}`;
 let running = true;
@@ -75,9 +76,9 @@ async function runJob(job: Row) {
       throw new Error(`Unknown job type: ${job.type}`);
     }
     log(`✔ ${job.type} ${jobId}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const attempts = Number(job.attempts ?? 1);
-    const message = String(error?.message ?? error).slice(0, 900);
+    const message = errorMessage(error).slice(0, 900);
     await recordJobLog(jobId, `Error: ${message}`, "error");
     log(`✖ ${job.type} ${jobId}: ${message}`);
     if (attempts < 2) {
@@ -121,8 +122,8 @@ async function loop() {
     let job: Row | null = null;
     try {
       job = await claimNext(WORKER_ID);
-    } catch (err: any) {
-      log(`claim error: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      log(`claim error: ${errorMessage(err)}`);
       await new Promise((r) => setTimeout(r, 2000));
       continue;
     }

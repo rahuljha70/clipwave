@@ -10,12 +10,13 @@ import { Skeleton } from "@/components/ui/progress";
 import { MiniBars } from "@/components/dashboard/charts";
 import { useToast } from "@/components/ui/toast";
 import { apiPost, useApi } from "@/lib/client/api";
-import { formatBytes, relativeTime } from "@/lib/utils";
+import { errorMessage, relativeTime } from "@/lib/utils";
 import type { PlanId } from "@/lib/plans";
+import type { BillingResponse } from "@/lib/contracts";
 
 export default function BillingPage() {
   const toast = useToast();
-  const { data, loading, refresh } = useApi<any>("/api/billing");
+  const { data, loading, refresh } = useApi<BillingResponse>("/api/billing");
   const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
 
   const usage = data?.usage;
@@ -26,8 +27,8 @@ export default function BillingPage() {
       await apiPost("/api/billing/change", { plan });
       toast.success("Plan updated", `You're now on ${plan}.`);
       await refresh();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not change the plan");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not change the plan"));
     } finally {
       setBusyPlan(null);
     }

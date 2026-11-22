@@ -6,7 +6,6 @@ import { nowIso, q1, run, type Row } from "@/lib/db";
 import { getEffectivePlan } from "@/lib/plans";
 import { recordUsage } from "@/lib/entitlements";
 import { absPath, existsRel } from "@/lib/storage";
-import { storageClipPath } from "@/lib/paths";
 import { serveFile } from "@/lib/http-file";
 import { run as ffmpegRun } from "@/lib/media/ffmpeg";
 

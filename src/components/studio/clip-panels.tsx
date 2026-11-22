@@ -7,7 +7,6 @@ import {
   FileVideo,
   Gauge,
   Image as ImageIcon,
-  Music2,
   Plus,
   RotateCcw,
   Scissors,
@@ -21,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Label, Select, Slider, Switch } from "@/components/ui/field";
 import { RingProgress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/toast";
-import { cn, formatTimecode, scoreTone } from "@/lib/utils";
+import { cn, errorMessage, formatTimecode, scoreTone } from "@/lib/utils";
+import type { ClipDto } from "@/lib/clip-utils";
 
 /* -------------------------------- Trim ----------------------------------- */
 
@@ -122,7 +122,7 @@ export function TrimPanel({
         onClick={() => onChange({ start: aiStart, end: aiEnd })}
         className="inline-flex items-center gap-1.5 text-[11.5px] text-violet-300 transition hover:text-violet-200"
       >
-        <RotateCcw className="size-3" /> Reset to the AI's cut ({formatTimecode(aiStart)} –{" "}
+        <RotateCcw className="size-3" /> Reset to the AI&apos;s cut ({formatTimecode(aiStart)} –{" "}
         {formatTimecode(aiEnd)})
       </button>
 
@@ -148,8 +148,8 @@ export function FormatPanel({
   update,
   planAllows60fps,
 }: {
-  edits: Record<string, any>;
-  update: (patch: Record<string, any>) => void;
+  edits: Record<string, unknown>;
+  update: (patch: Record<string, unknown>) => void;
   planAllows60fps: boolean;
 }) {
   return (
@@ -186,7 +186,7 @@ export function FormatPanel({
       <div>
         <Label>Reframing</Label>
         <Select
-          value={edits.cropMode ?? "face"}
+          value={typeof edits.cropMode === "string" ? edits.cropMode : "face"}
           onChange={(value) => update({ cropMode: value })}
           options={[
             { value: "face", label: "AI face tracking (pan to speaker)" },
@@ -237,14 +237,14 @@ export function FormatPanel({
       <div>
         <Label hint="built-in royalty-free">Background music</Label>
         <Select
-          value={edits.musicId ?? ""}
+          value={typeof edits.musicId === "string" ? edits.musicId : ""}
           onChange={(value) => update({ musicId: value })}
           options={MUSIC_TRACKS.map((track) => ({
             value: track.id,
             label: track.id ? `${track.name} — ${track.note}` : track.name,
           }))}
         />
-        {edits.musicId ? (
+        {typeof edits.musicId === "string" && edits.musicId ? (
           <div className="mt-2">
             <Slider
               label="Music volume"
@@ -268,7 +268,7 @@ export function FormatPanel({
         />
         {edits.introEnabled ? (
           <input
-            value={edits.introText ?? "Clipwave"}
+            value={typeof edits.introText === "string" ? edits.introText : "Clipwave"}
             onChange={(e) => update({ introText: e.target.value })}
             placeholder="Intro text"
             className="h-9 w-full rounded-lg border border-white/10 bg-ink-900/70 px-2.5 text-[12px] text-white focus:outline-none"
@@ -282,7 +282,7 @@ export function FormatPanel({
         />
         {edits.outroEnabled ? (
           <input
-            value={edits.outroText ?? "Follow for more"}
+            value={typeof edits.outroText === "string" ? edits.outroText : "Follow for more"}
             onChange={(e) => update({ outroText: e.target.value })}
             placeholder="Outro text"
             className="h-9 w-full rounded-lg border border-white/10 bg-ink-900/70 px-2.5 text-[12px] text-white focus:outline-none"
@@ -305,7 +305,7 @@ export function FormatPanel({
 
 /* -------------------------------- Score ---------------------------------- */
 
-export function ScorePanel({ clip }: { clip: any }) {
+export function ScorePanel({ clip }: { clip: ClipDto }) {
   const tone = scoreTone(clip.viralScore);
   const breakdown: Record<string, number> = clip.scoreBreakdown ?? {};
   const entries = Object.entries(breakdown);
@@ -374,8 +374,8 @@ export function ThumbnailPanel({
   clip,
   onUpdated,
 }: {
-  clip: any;
-  onUpdated: (clip: any) => void;
+  clip: ClipDto;
+  onUpdated: (clip: ClipDto) => void;
 }) {
   const toast = useToast();
   const [text, setText] = useState<string>(clip.seo?.thumbnailText ?? "");
@@ -407,8 +407,8 @@ export function ThumbnailPanel({
       onUpdated(data.clip);
       setVersion((v) => v + 1);
       toast.success("Thumbnail regenerated");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not build the thumbnail");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not build the thumbnail"));
     } finally {
       setBusy(false);
     }
@@ -496,7 +496,7 @@ export function ExportPanel({
   maxResolution,
   planName,
 }: {
-  clip: any;
+  clip: ClipDto;
   maxResolution: number;
   planName: string;
 }) {

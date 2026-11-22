@@ -32,9 +32,16 @@ export async function chatJson<T>(
       signal: AbortSignal.timeout(opts.timeoutMs ?? 45_000),
     });
     if (!res.ok) return null;
-    const data: any = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) return null;
+    const data: unknown = await res.json();
+    if (typeof data !== "object" || data === null || !("choices" in data)) return null;
+    const choices = data.choices;
+    if (!Array.isArray(choices) || choices.length === 0) return null;
+    const firstChoice: unknown = choices[0];
+    if (typeof firstChoice !== "object" || firstChoice === null || !("message" in firstChoice)) return null;
+    const message: unknown = firstChoice.message;
+    if (typeof message !== "object" || message === null || !("content" in message)) return null;
+    const content = message.content;
+    if (typeof content !== "string" || !content) return null;
     return JSON.parse(content) as T;
   } catch {
     return null;

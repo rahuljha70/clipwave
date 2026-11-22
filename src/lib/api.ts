@@ -76,7 +76,7 @@ export function route<Ctx = { params: Promise<Record<string, string>> }>(
   };
 }
 
-export async function readJson<T = any>(req: Request): Promise<T> {
+export async function readJson<T = unknown>(req: Request): Promise<T> {
   try {
     return (await req.json()) as T;
   } catch {

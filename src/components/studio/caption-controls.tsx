@@ -1,6 +1,6 @@
 "use client";
 
-import { Captions, Palette, Type } from "lucide-react";
+import { Captions, Palette } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Label, Select, Slider, Switch } from "@/components/ui/field";
 import { cn } from "@/lib/utils";

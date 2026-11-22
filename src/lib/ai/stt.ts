@@ -6,6 +6,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { z } from "zod";
 import { env } from "../env";
 import { run as spawnRun } from "../media/ffmpeg";
 import type { Transcript } from "../media/subtitles";
@@ -29,6 +30,24 @@ export interface AudioFeatures {
 }
 
 const SCRIPT_DIR = path.resolve("python");
+
+const transcriptionSchema = z.object({
+  error: z.string().optional(),
+  language: z.string().optional(),
+  words: z.array(z.object({
+    start: z.coerce.number(),
+    end: z.coerce.number(),
+    word: z.coerce.string(),
+    speaker: z.coerce.number().optional(),
+    probability: z.coerce.number().optional(),
+  })).optional(),
+  segments: z.array(z.object({
+    start: z.coerce.number(),
+    end: z.coerce.number(),
+    text: z.coerce.string().optional(),
+    speaker: z.coerce.number().optional(),
+  })).optional(),
+});
 
 export async function analyzeAudioFeatures(pcmPath: string): Promise<AudioFeatures> {
   const out = `${pcmPath}.features.json`;
@@ -105,18 +124,18 @@ export async function transcribeLocal(
     const message = (res.stdout || res.stderr || "unknown error").slice(-500);
     throw new Error(`Local transcription failed: ${message}`);
   }
-  const parsed = JSON.parse(fs.readFileSync(out, "utf8")) as any;
+  const parsed = transcriptionSchema.parse(JSON.parse(fs.readFileSync(out, "utf8")));
   if (parsed.error) throw new Error(parsed.error);
   return {
     language: parsed.language ?? "en",
-    words: (parsed.words ?? []).map((w: any) => ({
+    words: (parsed.words ?? []).map((w) => ({
       start: Number(w.start),
       end: Number(w.end),
       word: String(w.word),
       speaker: w.speaker ?? 0,
       probability: w.probability,
     })),
-    segments: (parsed.segments ?? []).map((s: any) => ({
+    segments: (parsed.segments ?? []).map((s) => ({
       start: Number(s.start),
       end: Number(s.end),
       text: String(s.text ?? ""),
@@ -142,14 +161,14 @@ export async function transcribeOpenAI(wavPath: string): Promise<Transcript> {
     body: form,
   });
   if (!res.ok) throw new Error(`Whisper API error ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const json: any = await res.json();
-  const words = (json.words ?? []).map((w: any) => ({
+  const json = transcriptionSchema.parse(await res.json());
+  const words = (json.words ?? []).map((w) => ({
     start: Number(w.start),
     end: Number(w.end),
     word: String(w.word),
     speaker: 0,
   }));
-  const segments = (json.segments ?? []).map((s: any) => ({
+  const segments = (json.segments ?? []).map((s) => ({
     start: Number(s.start),
     end: Number(s.end),
     text: String(s.text).trim(),

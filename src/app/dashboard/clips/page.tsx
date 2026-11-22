@@ -8,19 +8,22 @@ import { LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/progress";
 import { Tabs } from "@/components/ui/tabs";
 import { useApi } from "@/lib/client/api";
+import type { DashboardResponse } from "@/lib/contracts";
+import type { ClipDto } from "@/lib/clip-utils";
+import type { ProjectDto } from "@/lib/serializers";
 
 export default function ClipsLibraryPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "saved">("all");
-  const { data: dash, loading: dashLoading } = useApi<any>("/api/dashboard");
-  const { data, loading } = useApi<{ projects: any[] }>("/api/projects?limit=100");
+  const { data: dash, loading: dashLoading } = useApi<DashboardResponse>("/api/dashboard");
+  const { data, loading } = useApi<{ projects: ProjectDto[] }>("/api/projects?limit=100");
 
   // Flatten clips across projects (the dashboard endpoint returns saved clips;
   // project details give us everything else).
-  const savedClips = dash?.savedClips ?? [];
+  const savedClips = dash?.savedClips;
 
   const clipCards = useMemo(() => {
-    return savedClips.filter((clip: any) =>
+    return (savedClips ?? []).filter((clip: ClipDto) =>
       query ? clip.title?.toLowerCase().includes(query.toLowerCase()) : true,
     );
   }, [savedClips, query]);
@@ -67,7 +70,7 @@ export default function ClipsLibraryPage() {
         </div>
       ) : clipCards.length ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-          {clipCards.map((clip: any, i: number) => (
+          {clipCards.map((clip, i: number) => (
             <ClipCard key={clip.id} clip={clip} index={i} />
           ))}
         </div>

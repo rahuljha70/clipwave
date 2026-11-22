@@ -48,7 +48,7 @@ import { generateSeo } from "./ai/seo";
 import { composeThumbnail, pickBestFrame } from "./thumbnails";
 import { llmEnabled } from "./env";
 import { downloadSource, type SourceMeta } from "./sources";
-import { recordJobLog } from "./jobs";
+import { errorMessage } from "./utils";
 
 export type ProgressFn = (patch: {
   stage?: string;
@@ -72,7 +72,7 @@ export function defaultSubtitleConfig(styleId: string, planId: string): Subtitle
 
 /* ------------------------------ project flow ------------------------------ */
 
-export async function processProject(projectId: string, log = async (_: string) => {}) {
+export async function processProject(projectId: string, log: (stage: string) => Promise<void> = async () => {}) {
   const project = await q1<Row>(`SELECT * FROM projects WHERE id = ?`, [projectId]);
   if (!project) throw new Error(`Project ${projectId} not found`);
   const owner = project.user_id
@@ -209,7 +209,6 @@ export async function processProject(projectId: string, log = async (_: string) 
 
     /* 4 — acoustic features ------------------------------------------------ */
     await progress({ stage: "Analysing audio energy", progress: 38 });
-    let role: string | null = null;
     if (info.hasAudio) {
       const pcm = path.join(workDir, "audio.f32");
       await extractAudioF32(mediaPath, pcm);
@@ -304,17 +303,15 @@ export async function processProject(projectId: string, log = async (_: string) 
             projectId,
             clipId,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           await run(`UPDATE clips SET status='failed', error=?, updated_at=? WHERE id=?`, [
-            String(err?.message ?? err).slice(0, 600),
+            errorMessage(err).slice(0, 600),
             nowIso(),
             clipId,
           ]);
-          await log(`Clip ${i + 1} failed: ${err?.message ?? err}`);
+          await log(`Clip ${i + 1} failed: ${errorMessage(err)}`);
         }
       }
-
-      role = created > 0 ? "completed" : "failed";
 
       await run(
         `UPDATE projects SET status = ?, progress = 100, stage = ?, finished_at = ?, updated_at = ?
@@ -339,10 +336,10 @@ export async function processProject(projectId: string, log = async (_: string) 
     }
 
     throw new Error("This video has no audio track, so there is nothing to clip. Try another source.");
-  } catch (error: any) {
+  } catch (error: unknown) {
     await run(
       `UPDATE projects SET status = 'failed', error = ?, stage = ?, updated_at = ? WHERE id = ?`,
-      [String(error?.message ?? error).slice(0, 1000), "Failed", nowIso(), projectId],
+      [errorMessage(error).slice(0, 1000), "Failed", nowIso(), projectId],
     );
     throw error;
   }
@@ -403,7 +400,7 @@ export interface RenderClipInput {
     start?: number;
     end?: number;
     subtitleConfig?: Partial<SubtitleConfig>;
-    edits?: Record<string, any>;
+    edits?: Record<string, unknown>;
     textOverlay?: { text: string; position: "top" | "bottom"; startSec: number; endSec: number } | null;
     words?: { start: number; end: number; word: string; speaker?: number }[];
     aspect?: string;
@@ -421,7 +418,7 @@ export async function renderClipArtifacts(input: RenderClipInput) {
   const clipDir = path.join(workDir, "clips", clipId);
   await storage.ensureDir(clipDir);
 
-  const edits = (input.overrides?.edits ?? {}) as Record<string, any>;
+  const edits = input.overrides?.edits ?? {};
   const cropMode = (edits.cropMode ?? "face") as "face" | "center" | "blur";
   const speed = Number(edits.speed ?? 1);
   const subtitleStyle = String(edits.subtitleStyle ?? "mrbeast");
@@ -593,7 +590,7 @@ function mergingSubtitleConfig(
   override: Partial<SubtitleConfig> | undefined,
   styleId: string,
   planId: string,
-  edits: Record<string, any>,
+  edits: Record<string, unknown>,
 ): SubtitleConfig {
   const base = defaultSubtitleConfig(styleId, planId);
   const merged: SubtitleConfig = { ...base, ...(override ?? {}) };
@@ -601,11 +598,15 @@ function mergingSubtitleConfig(
   if (edits.subtitleSize) merged.fontSize = Number(edits.subtitleSize);
   if (edits.subtitleColor) merged.textColor = String(edits.subtitleColor);
   if (edits.subtitleHighlight) merged.highlightColor = String(edits.subtitleHighlight);
-  if (edits.subtitlePosition) merged.position = edits.subtitlePosition;
+  if (["top", "middle", "bottom"].includes(String(edits.subtitlePosition))) {
+    merged.position = edits.subtitlePosition as SubtitleConfig["position"];
+  }
   if (edits.subtitleUppercase !== undefined) merged.uppercase = Boolean(edits.subtitleUppercase);
   if (edits.subtitleEmoji !== undefined) merged.emoji = Boolean(edits.subtitleEmoji);
   if (edits.subtitleWords) merged.maxWordsPerLine = Number(edits.subtitleWords);
-  if (edits.subtitleAnimation) merged.animation = edits.subtitleAnimation;
+  if (["pop", "fade", "slide", "none"].includes(String(edits.subtitleAnimation))) {
+    merged.animation = edits.subtitleAnimation as SubtitleConfig["animation"];
+  }
   if (edits.subtitleOutline !== undefined) merged.outline = Number(edits.subtitleOutline);
   if (edits.subtitleShadow !== undefined) merged.shadow = Number(edits.subtitleShadow);
   if (edits.subtitleLatin !== undefined) merged.speakerLabels = false;
@@ -613,7 +614,7 @@ function mergingSubtitleConfig(
 }
 
 /** Built-in royalty-free music bed (see public/audio/README.md). */
-export function resolveMusic(edits: Record<string, any>): string | null {
+export function resolveMusic(edits: Record<string, unknown>): string | null {
   const id = edits?.musicId;
   if (!id || typeof id !== "string") return null;
   const safe = id.replace(/[^a-z0-9-_]/gi, "");
@@ -633,7 +634,7 @@ export async function rerenderClip(
     start?: number;
     end?: number;
     subtitleConfig?: Partial<SubtitleConfig>;
-    edits?: Record<string, any>;
+    edits?: Record<string, unknown>;
     words?: { start: number; end: number; word: string; speaker?: number }[];
     aspect?: string;
   },
@@ -695,9 +696,9 @@ export async function rerenderClip(
     });
     await log(`Re-rendered clip at ${out.renderRel}`);
     return out;
-  } catch (err: any) {
+  } catch (err: unknown) {
     await run(`UPDATE clips SET status='failed', error=?, updated_at=? WHERE id=?`, [
-      String(err?.message ?? err).slice(0, 600),
+      errorMessage(err).slice(0, 600),
       nowIso(),
       clipId,
     ]);

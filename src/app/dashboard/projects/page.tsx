@@ -8,13 +8,14 @@ import { LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/progress";
 import { Tabs } from "@/components/ui/tabs";
 import { useApi } from "@/lib/client/api";
+import type { ProjectDto } from "@/lib/serializers";
 
 type Filter = "all" | "ready" | "processing" | "failed";
 
 export default function ProjectsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
-  const { data, loading } = useApi<{ projects: any[] }>("/api/projects?limit=100", {
+  const { data, loading } = useApi<{ projects: ProjectDto[] }>("/api/projects?limit=100", {
     refreshMs: 8000,
   });
 

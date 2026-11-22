@@ -8,6 +8,7 @@ import { AuthCard, AuthDivider, FormError, GoogleButton } from "@/components/aut
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 import { apiPost } from "@/lib/client/api";
+import { errorMessage } from "@/lib/utils";
 
 export default function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
@@ -32,8 +33,8 @@ export default function RegisterForm({ googleEnabled }: { googleEnabled: boolean
       }
       router.push(next);
       router.refresh();
-    } catch (err: any) {
-      setError(err?.message ?? "Could not create your account.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Could not create your account."));
     } finally {
       setBusy(false);
     }
