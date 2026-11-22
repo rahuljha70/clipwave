@@ -173,6 +173,16 @@ async function init(): Promise<Driver> {
     ? createPostgresDriver(env.databaseUrl)
     : createSqliteDriver(env.sqlitePath);
 
+  // Netlify Database applies the files in netlify/database/migrations before a
+  // deploy is published. Its runtime role is intentionally not allowed to run
+  // DDL, so skip the app-managed migration table in that deployment mode.
+  if (
+    driver.name === "postgres" &&
+    process.env.CLIPWAVE_MANAGED_MIGRATIONS === "true"
+  ) {
+    return driver;
+  }
+
   await driver.exec(
     `CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)`,
   );
